@@ -10,6 +10,14 @@
   --card-background-color: #efeeee;
 
   --text-color: #202020;
+
+  --border-radius: 2.5rem;
+  --border-radius-light: 0.5rem;
+
+  --shadow-light: rgba(0, 0, 0, 0.2) 0px 1px 2px;
+  --shadow-medium: rgba(0, 0, 0, 0.2) 0px 2px 4px;
+  --shadow-raised: 0 3px 1px -2px rgba(0, 0, 0, 0.2),
+    0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,6 +67,38 @@ footer {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+.loginContainer {
+  margin: 0 auto;
+  max-width: 600px;
+  box-shadow: var(--shadow-raised);
+  padding: 3rem;
+  border-radius: var(--border-radius);
+}
+
+.loginForm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+.passwordInputContainer {
+  position: relative;
+  width: 100%;
+}
+
+#forgotPasswordButton {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  transform: translateY(100%);
+}
+
+#loginSubmitButton {
+  margin-top: 1rem;
 }
 
 .dialogHeader {

@@ -2,10 +2,22 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { IMusic, Order } from "@/app/global";
-import { Box, Checkbox, Paper, Table, TableBody, TableCell, TableContainer, TablePagination, TableRow } from "@mui/material";
+import {
+  Box,
+  Checkbox,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TablePagination,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import { stableSort } from "./getStableSort";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
+import { useAuth } from "@/app/contexts/AuthContext";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
 
@@ -32,8 +44,9 @@ export default function UserMusics() {
   const [orderBy, setOrderBy] = useState<keyof IMusic>("votes");
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [page, setPage] = useState(0);
-
   const [rowsPerPage, setRowsPerPage] = useState(5);
+
+  const { currentUser } = useAuth();
 
   const handleRequestSort = (event: React.MouseEvent<unknown>, property: keyof IMusic) => {
     const isAsc = orderBy === property && order === "asc";
@@ -81,18 +94,20 @@ export default function UserMusics() {
   );
 
   useEffect(() => {
-    const q = query(collection(db, "musics"), where("user", "==", "1"));
+    if (currentUser) {
+      const q = query(collection(db, "musics"), where("user", "==", currentUser?.uid));
 
-    onSnapshot(q, (querySnapshot) => {
-      let musicsArray: IMusic[] = [];
+      onSnapshot(q, (querySnapshot) => {
+        let musicsArray: IMusic[] = [];
 
-      querySnapshot.forEach((doc) => {
-        musicsArray.push({ ...doc.data(), id: doc.id } as IMusic);
+        querySnapshot.forEach((doc) => {
+          musicsArray.push({ ...doc.data(), id: doc.id } as IMusic);
+        });
+
+        setData(musicsArray);
       });
-
-      setData(musicsArray);
-    });
-  }, []);
+    }
+  }, [currentUser]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -109,38 +124,44 @@ export default function UserMusics() {
               rowCount={data.length}
             />
             <TableBody>
-              {visibleRows.map((row, index) => {
-                const isItemSelected = isSelected(row.id);
-                const labelId = `enhanced-table-checkbox-${index}`;
+              {visibleRows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6}>{"EMPTY"}</TableCell>
+                </TableRow>
+              ) : (
+                visibleRows.map((row, index) => {
+                  const isItemSelected = isSelected(row.id);
+                  const labelId = `enhanced-table-checkbox-${index}`;
 
-                return (
-                  <TableRow
-                    hover
-                    onClick={(event) => handleClick(event, row.id)}
-                    role="checkbox"
-                    aria-checked={isItemSelected}
-                    tabIndex={-1}
-                    key={row.id}
-                    selected={isItemSelected}
-                    sx={{ cursor: "pointer" }}
-                  >
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        color="primary"
-                        checked={isItemSelected}
-                        inputProps={{
-                          "aria-labelledby": labelId,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell component="th" id={labelId} scope="row" padding="none">
-                      {row.title}
-                    </TableCell>
-                    <TableCell align="right">{row.genre}</TableCell>
-                    <TableCell align="right">{row.duration}</TableCell>
-                  </TableRow>
-                );
-              })}
+                  return (
+                    <TableRow
+                      hover
+                      onClick={(event) => handleClick(event, row.id)}
+                      role="checkbox"
+                      aria-checked={isItemSelected}
+                      tabIndex={-1}
+                      key={row.id}
+                      selected={isItemSelected}
+                      sx={{ cursor: "pointer" }}
+                    >
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          color="primary"
+                          checked={isItemSelected}
+                          inputProps={{
+                            "aria-labelledby": labelId,
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell component="th" id={labelId} scope="row" padding="none">
+                        {row.title}
+                      </TableCell>
+                      <TableCell align="right">{row.genre}</TableCell>
+                      <TableCell align="right">{row.duration}</TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
               {emptyRows > 0 && (
                 <TableRow>
                   <TableCell colSpan={6} />

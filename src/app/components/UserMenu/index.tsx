@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { auth } from "@/app/services/firebase";
 import Button from "@mui/material/Button";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
@@ -19,6 +20,10 @@ export default function UserMenu() {
   const handleClose = () => {
     setAnchorEl(null);
   };
+
+  function logout() {
+    auth.signOut();
+  }
 
   return (
     <div>
@@ -43,7 +48,7 @@ export default function UserMenu() {
         open={open}
         onClose={handleClose}
       >
-        <MenuItem onClick={handleClose} disableRipple>
+        <MenuItem onClick={logout} disableRipple>
           <LogoutIcon />
           Logout
         </MenuItem>

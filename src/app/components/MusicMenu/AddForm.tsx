@@ -21,6 +21,7 @@ import { useFormik } from "formik";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import CloseIcon from "@mui/icons-material/Close";
+import { useAuth } from "@/app/contexts/AuthContext";
 
 interface AddMusicFormProps {
   setState: Dispatch<SetStateAction<boolean>>;
@@ -28,9 +29,10 @@ interface AddMusicFormProps {
 }
 
 export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
+  const { currentUser } = useAuth();
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const loading = false;
+  let loading = false;
   const musicGenres: MusicGenre[] = ["Rock", "Jazz", "Electronic", "Techno", "Country", "Pop", "Funk"];
 
   const addMusicSchema = object({
@@ -47,16 +49,19 @@ export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
     },
     validationSchema: addMusicSchema,
     onSubmit: async (values) => {
+      loading = true;
       try {
         await addDoc(collection(db, "musics"), {
           ...values,
-          user: "1",
+          user: currentUser?.uid,
           votes: 0,
         });
 
         setState(false);
       } catch (err) {
         console.error(err);
+      } finally {
+        loading = false;
       }
     },
     enableReinitialize: true,
