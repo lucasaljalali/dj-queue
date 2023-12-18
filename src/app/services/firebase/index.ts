@@ -3,13 +3,13 @@ import { getFirestore } from "firebase/firestore";
 // import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBSzirHg4Hzlu5CdOzUoCLE3Cg7RRnh8nc",
-  authDomain: "dj-queue-32151.firebaseapp.com",
-  projectId: "dj-queue-32151",
-  storageBucket: "dj-queue-32151.appspot.com",
-  messagingSenderId: "731896116135",
-  appId: "1:731896116135:web:059a2ea4eeaf15aa1d7c82",
-  measurementId: "G-S256MP6WKF",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_APIKEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTHDOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECTID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGEBUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGINGSENDERID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APPID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENTID,
 };
 
 const app = initializeApp(firebaseConfig);

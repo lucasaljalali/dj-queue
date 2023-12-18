@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { IMusic, Order } from "@/app/global";
 import { Box, Checkbox, Paper, Table, TableBody, TableCell, TableContainer, TablePagination, TableRow } from "@mui/material";
 import { stableSort } from "./getStableSort";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { and, collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
@@ -81,7 +81,7 @@ export default function Ranking() {
   );
 
   useEffect(() => {
-    const q = query(collection(db, "musics"), where("users", "array-contains", "1"));
+    const q = query(collection(db, "musics"), where("user", "==", "1"), where("votes", ">", 0));
 
     onSnapshot(q, (querySnapshot) => {
       let musicsArray: IMusic[] = [];
@@ -92,8 +92,6 @@ export default function Ranking() {
 
       setData(musicsArray);
     });
-
-    console.log("GET RANKING");
   }, []);
 
   return (

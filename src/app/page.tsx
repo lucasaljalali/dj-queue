@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Tab, Tabs } from "@mui/material";
-import AllMusics from "./components/AllMusicsList";
 import MusicMenu from "./components/MusicMenu";
 import Ranking from "./components/Ranking";
 import UserMenu from "./components/UserMenu";
@@ -22,16 +21,12 @@ export default function Home() {
         <Tabs value={tabValue} onChange={handleChange} aria-label="basic tabs example">
           <Tab label="Ranking" />
           <Tab label="My Musics" />
-          <Tab label="All Musics" />
         </Tabs>
         <CustomTabPanel value={tabValue} index={0}>
           <Ranking />
         </CustomTabPanel>
         <CustomTabPanel value={tabValue} index={1}>
           <UserMusics />
-        </CustomTabPanel>
-        <CustomTabPanel value={tabValue} index={2}>
-          <AllMusics />
         </CustomTabPanel>
       </main>
       <footer>

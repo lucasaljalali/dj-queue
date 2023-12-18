@@ -18,9 +18,9 @@ import {
 import { number, object, string } from "yup";
 import { MusicGenre } from "@/app/global";
 import { useFormik } from "formik";
-import CloseIcon from "@mui/icons-material/Close";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
+import CloseIcon from "@mui/icons-material/Close";
 
 interface AddMusicFormProps {
   setState: Dispatch<SetStateAction<boolean>>;
@@ -47,11 +47,17 @@ export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
     },
     validationSchema: addMusicSchema,
     onSubmit: async (values) => {
-      console.log(values);
-      await addDoc(collection(db, "musics"), {
-        ...values,
-        users: ["1"],
-      });
+      try {
+        await addDoc(collection(db, "musics"), {
+          ...values,
+          user: "1",
+          votes: 0,
+        });
+
+        setState(false);
+      } catch (err) {
+        console.error(err);
+      }
     },
     enableReinitialize: true,
   });

@@ -81,7 +81,7 @@ export default function UserMusics() {
   );
 
   useEffect(() => {
-    const q = query(collection(db, "musics"), where("users", "array-contains", "1"));
+    const q = query(collection(db, "musics"), where("user", "==", "1"));
 
     onSnapshot(q, (querySnapshot) => {
       let musicsArray: IMusic[] = [];
@@ -92,8 +92,6 @@ export default function UserMusics() {
 
       setData(musicsArray);
     });
-
-    console.log("GET USER MUSICS");
   }, []);
 
   return (
