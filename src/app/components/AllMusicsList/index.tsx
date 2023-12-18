@@ -26,7 +26,7 @@ function getComparator<Key extends keyof any>(
   return order === "desc" ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
 }
 
-export default function Ranking() {
+export default function AllMusics() {
   const [data, setData] = useState<IMusic[]>([] as IMusic[]);
   const [order, setOrder] = useState<Order>("desc");
   const [orderBy, setOrderBy] = useState<keyof IMusic>("votes");
@@ -81,7 +81,7 @@ export default function Ranking() {
   );
 
   useEffect(() => {
-    const q = query(collection(db, "musics"), where("users", "array-contains", "1"));
+    const q = query(collection(db, "musics"));
 
     onSnapshot(q, (querySnapshot) => {
       let musicsArray: IMusic[] = [];
@@ -93,7 +93,7 @@ export default function Ranking() {
       setData(musicsArray);
     });
 
-    console.log("GET RANKING");
+    console.log("GET ALL MUSICS");
   }, []);
 
   return (
@@ -140,7 +140,6 @@ export default function Ranking() {
                     </TableCell>
                     <TableCell align="right">{row.genre}</TableCell>
                     <TableCell align="right">{row.duration}</TableCell>
-                    <TableCell align="right">{row.votes}</TableCell>
                   </TableRow>
                 );
               })}
