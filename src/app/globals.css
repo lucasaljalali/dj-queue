@@ -138,6 +138,13 @@ a {
   right: 2rem;
 }
 
+.musicListButtonsContainer {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 @media (prefers-color-scheme: dark) {
   html {
     color-scheme: dark;

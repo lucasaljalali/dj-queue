@@ -1,6 +1,5 @@
 "use client";
 
-//TODO: QRcode generator for guest page
 //TODO: guest page to vote for musics
 //TODO: make all styles cool and nice (for DJ's)
 //TODO: ranking and musics list requests paginations

@@ -1,8 +1,6 @@
-"use client";
-
-import { useEffect, useMemo, useRef, useState } from "react";
 import { IMusic, Order } from "@/app/global";
 import {
+  AlertColor,
   Box,
   Checkbox,
   IconButton,
@@ -14,16 +12,17 @@ import {
   TablePagination,
   TableRow,
 } from "@mui/material";
+import { use, useEffect, useMemo, useState } from "react";
 import { stableSort } from "./getStableSort";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, increment, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
-import { useAuth } from "@/app/contexts/AuthContext";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
-import EditIcon from "@mui/icons-material/Edit";
-import EditMusicForm from "../EditMusicForm";
-import AddMusicButton from "../AddMusicButton";
-import QRcodeButton from "../QRcodeButton";
+
+interface VotingListProps {
+  djId: string;
+}
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -42,22 +41,22 @@ function getComparator<Key extends keyof any>(
   return order === "desc" ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
 }
 
-export default function UserMusics() {
+export default function VotingList({ djId }: VotingListProps) {
   const [data, setData] = useState<IMusic[]>([] as IMusic[]);
-  const [editFormOpen, setEditFormOpen] = useState(false);
-  const [order, setOrder] = useState<Order>("asc");
-  const [orderBy, setOrderBy] = useState<keyof IMusic>("title");
-  const [selected, setSelected] = useState<readonly string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const { currentUser } = useAuth();
-  const editFormData = useRef<IMusic | null>(null);
+  const [selected, setSelected] = useState<readonly string[]>([]);
+  const [order, setOrder] = useState<Order>("asc");
+  const [orderBy, setOrderBy] = useState<keyof IMusic>("title");
+  const [snackbarState, setSnackbarState] = useState({ open: false, message: "", severity: "info" as AlertColor });
 
-  const handleRequestSort = (event: React.MouseEvent<unknown>, property: keyof IMusic) => {
-    const isAsc = orderBy === property && order === "asc";
-    setOrder(isAsc ? "desc" : "asc");
-    setOrderBy(property);
-  };
+  let loading = false;
+
+  let currentVotes = JSON.parse(sessionStorage.getItem("votes") || "[]") as string[];
+
+  const isSelected = (id: string) => selected.indexOf(id) !== -1;
+
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data.length) : 0;
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
@@ -67,6 +66,17 @@ export default function UserMusics() {
     }
     setSelected([]);
   };
+
+  const handleRequestSort = (event: React.MouseEvent<unknown>, property: keyof IMusic) => {
+    const isAsc = orderBy === property && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(property);
+  };
+
+  const visibleRows = useMemo(
+    () => stableSort(data, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+    [order, orderBy, page, rowsPerPage, data]
+  );
 
   const handleClick = (event: React.MouseEvent<unknown>, id: string) => {
     const selectedIndex = selected.indexOf(id);
@@ -80,10 +90,36 @@ export default function UserMusics() {
     setSelected(newSelected);
   };
 
-  const handleEditClick = (event: React.MouseEvent<unknown>, data: IMusic) => {
+  const updateSessionStorage = (musicId: string, voted: boolean) => {
+    if (voted) {
+      const index = currentVotes.indexOf(musicId);
+      if (index !== -1) {
+        currentVotes.splice(index, 1);
+        sessionStorage.setItem("votes", JSON.stringify(currentVotes));
+      }
+    } else {
+      if (!currentVotes.includes(musicId)) {
+        currentVotes.push(musicId);
+        sessionStorage.setItem("votes", JSON.stringify(currentVotes));
+      }
+    }
+  };
+
+  const handleVoteClick = async (event: React.MouseEvent<unknown>, data: IMusic) => {
     event.stopPropagation();
-    editFormData.current = data;
-    setEditFormOpen(true);
+    loading = true;
+    try {
+      const voted = currentVotes.includes(data.id);
+      const musicRef = doc(db, "musics", data.id);
+      await updateDoc(musicRef, { votes: increment(voted ? -1 : 1) });
+      setSnackbarState({ open: true, message: "Success!", severity: "success" });
+      updateSessionStorage(data.id, voted);
+    } catch (error: any) {
+      setSnackbarState({ open: true, message: error.code, severity: "error" });
+      console.error(error);
+    } finally {
+      loading = false;
+    }
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -95,18 +131,9 @@ export default function UserMusics() {
     setPage(0);
   };
 
-  const isSelected = (id: string) => selected.indexOf(id) !== -1;
-
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data.length) : 0;
-
-  const visibleRows = useMemo(
-    () => stableSort(data, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage, data]
-  );
-
   useEffect(() => {
-    if (currentUser) {
-      const q = query(collection(db, "musics"), where("user", "==", currentUser?.uid));
+    if (djId) {
+      const q = query(collection(db, "musics"), where("user", "==", djId));
 
       onSnapshot(q, (querySnapshot) => {
         let musicsArray: IMusic[] = [];
@@ -118,7 +145,7 @@ export default function UserMusics() {
         setData(musicsArray);
       });
     }
-  }, [currentUser]);
+  }, [djId]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -169,10 +196,15 @@ export default function UserMusics() {
                       </TableCell>
                       <TableCell align="right">{row.genre}</TableCell>
                       <TableCell align="right">{row.duration}</TableCell>
+                      <TableCell align="right">{row.votes}</TableCell>
                       <TableCell align="right">
                         {
-                          <IconButton onClick={(event) => handleEditClick(event, row)}>
-                            <EditIcon />
+                          <IconButton
+                            onClick={(event) => handleVoteClick(event, row)}
+                            className={currentVotes.includes(row.id) ? "voteButton voted" : "voteButton"}
+                            style={{ color: currentVotes.includes(row.id) ? "blue" : undefined }}
+                          >
+                            <ThumbUpIcon />
                           </IconButton>
                         }
                       </TableCell>
@@ -198,13 +230,6 @@ export default function UserMusics() {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>
-
-      {editFormData.current && <EditMusicForm open={editFormOpen} setState={setEditFormOpen} data={editFormData.current} />}
-
-      <div className="musicListButtonsContainer">
-        <QRcodeButton />
-        <AddMusicButton />
-      </div>
     </Box>
   );
 }
