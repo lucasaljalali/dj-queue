@@ -13,7 +13,7 @@ interface TableProps {
 
 interface HeadCell {
   disablePadding: boolean;
-  id: keyof IMusic;
+  id: keyof IMusic | "edit";
   label: string;
   numeric: boolean;
 }
@@ -43,6 +43,12 @@ export default function CustomTableHead(props: TableProps) {
       disablePadding: false,
       label: "Duration (min)",
     },
+    {
+      id: "edit",
+      numeric: true,
+      disablePadding: false,
+      label: "Edit",
+    },
   ];
 
   return (
@@ -69,7 +75,9 @@ export default function CustomTableHead(props: TableProps) {
             <TableSortLabel
               active={orderBy === headCell.id}
               direction={orderBy === headCell.id ? order : "asc"}
-              onClick={createSortHandler(headCell.id)}
+              onClick={headCell.id !== "edit" ? createSortHandler(headCell.id) : undefined}
+              hideSortIcon={headCell.id === "edit"}
+              style={{ cursor: headCell.id === "edit" ? "default" : undefined }}
             >
               {headCell.label}
               {orderBy === headCell.id ? (

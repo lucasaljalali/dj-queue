@@ -101,7 +101,7 @@ export default function Ranking() {
   return (
     <Box sx={{ width: "100%" }}>
       <Paper sx={{ width: "100%", mb: 2 }}>
-        <TableToolbar numSelected={selected.length} />
+        <TableToolbar numSelected={selected.length} selected={selected} setSelected={setSelected} />
         <TableContainer>
           <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
             <CustomTableHead

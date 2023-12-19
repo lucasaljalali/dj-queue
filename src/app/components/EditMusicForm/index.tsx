@@ -1,5 +1,8 @@
-import { Dispatch, SetStateAction } from "react";
+"use client";
+
+import { Dispatch, SetStateAction, useState } from "react";
 import {
+  AlertColor,
   Box,
   Button,
   Dialog,
@@ -16,20 +19,21 @@ import {
   useTheme,
 } from "@mui/material";
 import { number, object, string } from "yup";
-import { MusicGenre } from "@/app/global";
+import { IMusic, MusicGenre } from "@/app/global";
 import { useFormik } from "formik";
-import { addDoc, collection } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import CloseIcon from "@mui/icons-material/Close";
-import { useAuth } from "@/app/contexts/AuthContext";
+import ResultMessage from "../ResultMessage";
 
 interface AddMusicFormProps {
   setState: Dispatch<SetStateAction<boolean>>;
   open: boolean;
+  data: IMusic;
 }
 
-export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
-  const { currentUser } = useAuth();
+export default function EditMusicForm({ setState, open, data }: AddMusicFormProps) {
+  const [snackbarState, setSnackbarState] = useState({ open: false, message: "", severity: "info" as AlertColor });
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   let loading = false;
@@ -43,23 +47,21 @@ export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
 
   const formik = useFormik({
     initialValues: {
-      title: "",
-      genre: "",
-      duration: 0,
+      title: data.title,
+      genre: data.genre,
+      duration: data.duration,
     },
     validationSchema: addMusicSchema,
     onSubmit: async (values) => {
       loading = true;
       try {
-        await addDoc(collection(db, "musics"), {
-          ...values,
-          user: currentUser?.uid,
-          votes: 0,
-        });
-
+        const musicRef = doc(db, "musics", data.id);
+        await updateDoc(musicRef, values);
+        setSnackbarState({ open: true, message: "Success!", severity: "success" });
         setState(false);
-      } catch (err) {
-        console.error(err);
+      } catch (error: any) {
+        setSnackbarState({ open: true, message: error.code, severity: "error" });
+        console.error(error);
       } finally {
         loading = false;
       }
@@ -70,7 +72,7 @@ export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
   return (
     <Dialog onClose={() => setState(false)} open={open} fullScreen={fullScreen}>
       <div className="dialogHeader">
-        <Typography variant="h5">Add Music</Typography>
+        <Typography variant="h5">Edit Music</Typography>
 
         <IconButton aria-label="close" onClick={() => setState(false)}>
           <CloseIcon />
@@ -130,28 +132,9 @@ export default function AddMusicForm({ setState, open }: AddMusicFormProps) {
         />
 
         <Button disabled={loading} variant="contained" type="submit">
-          ADD
+          SAVE
         </Button>
-        {/* {errorsAlerts?.map(
-          (errorMessage, index) =>
-            errorMessage && (
-              <div key={index} className="alertContainer">
-                <Alert severity="error" onClose={(e) => e.currentTarget.parentElement?.parentElement?.remove()}>
-                  {errorMessage}
-                </Alert>
-              </div>
-            )
-        )}
-        {successAlerts?.map(
-          (successMessage, index) =>
-            successMessage && (
-              <div key={index} className="alertContainer">
-                <Alert severity="success" onClose={(e) => e.currentTarget.parentElement?.parentElement?.remove()}>
-                  {successMessage}
-                </Alert>
-              </div>
-            )
-        )} */}
+        <ResultMessage state={snackbarState} setState={setSnackbarState} />
       </Box>
     </Dialog>
   );

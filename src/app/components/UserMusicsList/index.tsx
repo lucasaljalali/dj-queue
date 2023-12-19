@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { IMusic, Order } from "@/app/global";
 import {
   Box,
   Checkbox,
+  IconButton,
   Paper,
   Table,
   TableBody,
@@ -12,7 +13,6 @@ import {
   TableContainer,
   TablePagination,
   TableRow,
-  Typography,
 } from "@mui/material";
 import { stableSort } from "./getStableSort";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
@@ -20,6 +20,9 @@ import { db } from "@/app/services/firebase";
 import { useAuth } from "@/app/contexts/AuthContext";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
+import EditIcon from "@mui/icons-material/Edit";
+import EditMusicForm from "../EditMusicForm";
+import AddMusicButton from "../AddMusicButton";
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -40,13 +43,14 @@ function getComparator<Key extends keyof any>(
 
 export default function UserMusics() {
   const [data, setData] = useState<IMusic[]>([] as IMusic[]);
-  const [order, setOrder] = useState<Order>("desc");
-  const [orderBy, setOrderBy] = useState<keyof IMusic>("votes");
+  const [editFormOpen, setEditFormOpen] = useState(false);
+  const [order, setOrder] = useState<Order>("asc");
+  const [orderBy, setOrderBy] = useState<keyof IMusic>("title");
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-
   const { currentUser } = useAuth();
+  const editFormData = useRef<IMusic | null>(null);
 
   const handleRequestSort = (event: React.MouseEvent<unknown>, property: keyof IMusic) => {
     const isAsc = orderBy === property && order === "asc";
@@ -73,6 +77,12 @@ export default function UserMusics() {
       newSelected = selected.filter((itemId) => itemId !== id);
     }
     setSelected(newSelected);
+  };
+
+  const handleEditClick = (event: React.MouseEvent<unknown>, data: IMusic) => {
+    event.stopPropagation();
+    editFormData.current = data;
+    setEditFormOpen(true);
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
@@ -112,7 +122,7 @@ export default function UserMusics() {
   return (
     <Box sx={{ width: "100%" }}>
       <Paper sx={{ width: "100%", mb: 2 }}>
-        <TableToolbar numSelected={selected.length} />
+        <TableToolbar numSelected={selected.length} selected={selected} setSelected={setSelected} />
         <TableContainer>
           <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
             <CustomTableHead
@@ -158,6 +168,13 @@ export default function UserMusics() {
                       </TableCell>
                       <TableCell align="right">{row.genre}</TableCell>
                       <TableCell align="right">{row.duration}</TableCell>
+                      <TableCell align="right">
+                        {
+                          <IconButton onClick={(event) => handleEditClick(event, row)}>
+                            <EditIcon />
+                          </IconButton>
+                        }
+                      </TableCell>
                     </TableRow>
                   );
                 })
@@ -180,6 +197,10 @@ export default function UserMusics() {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>
+
+      {editFormData.current && <EditMusicForm open={editFormOpen} setState={setEditFormOpen} data={editFormData.current} />}
+
+      <AddMusicButton />
     </Box>
   );
 }

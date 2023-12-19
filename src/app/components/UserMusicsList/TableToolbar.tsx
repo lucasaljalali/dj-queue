@@ -1,13 +1,40 @@
-import { IconButton, Toolbar, Tooltip, Typography } from "@mui/material";
+"use client";
+
+import { Dispatch, SetStateAction, useState } from "react";
+import { AlertColor, IconButton, Toolbar, Tooltip, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { deleteDoc, doc } from "firebase/firestore";
+import { db } from "@/app/services/firebase";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ResultMessage from "../ResultMessage";
 
 interface TableToolbarProps {
   numSelected: number;
+  selected: readonly string[];
+  setSelected: Dispatch<SetStateAction<readonly string[]>>;
 }
 
-export default function TableToolbar(props: TableToolbarProps) {
-  const { numSelected } = props;
+export default function TableToolbar({ numSelected, selected, setSelected }: TableToolbarProps) {
+  const [snackbarState, setSnackbarState] = useState({ open: false, message: "", severity: "info" as AlertColor });
+
+  let loading = false;
+
+  function handleDeleteClick() {
+    loading = true;
+    selected.forEach(async (id) => {
+      try {
+        await deleteDoc(doc(db, "musics", id));
+        setSnackbarState({ open: true, message: "Success!", severity: "success" });
+        setSelected([]);
+      } catch (error: any) {
+        setSnackbarState({ open: true, message: error.code, severity: "error" });
+        console.error(error);
+      } finally {
+        loading = false;
+      }
+    });
+    loading = false;
+  }
 
   return (
     <Toolbar
@@ -25,7 +52,7 @@ export default function TableToolbar(props: TableToolbarProps) {
             {numSelected} selected
           </Typography>
           <Tooltip title="Delete">
-            <IconButton>
+            <IconButton disabled={loading} onClick={handleDeleteClick}>
               <DeleteIcon />
             </IconButton>
           </Tooltip>
@@ -35,6 +62,8 @@ export default function TableToolbar(props: TableToolbarProps) {
           My Musics
         </Typography>
       )}
+
+      <ResultMessage state={snackbarState} setState={setSnackbarState} />
     </Toolbar>
   );
 }

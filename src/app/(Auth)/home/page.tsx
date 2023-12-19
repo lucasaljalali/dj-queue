@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { Tab, Tabs } from "@mui/material";
-import MusicMenu from "../../components/MusicMenu";
 import Ranking from "../../components/Ranking";
-import UserMenu from "../../components/UserMenu";
 import UserMusics from "../../components/UserMusicsList";
 import CustomTabPanel from "../../components/CustomTabPanel";
+import MyUser from "../../components/MyUser";
 
 export default function Home() {
   const [tabValue, setTabValue] = useState(0);
@@ -30,6 +29,7 @@ export default function Home() {
         <Tabs value={tabValue} onChange={handleChange} aria-label="basic tabs example">
           <Tab label="Ranking" />
           <Tab label="My Musics" />
+          <Tab label="My User" />
         </Tabs>
         <CustomTabPanel value={tabValue} index={0}>
           <Ranking />
@@ -37,11 +37,10 @@ export default function Home() {
         <CustomTabPanel value={tabValue} index={1}>
           <UserMusics />
         </CustomTabPanel>
+        <CustomTabPanel value={tabValue} index={2}>
+          <MyUser />
+        </CustomTabPanel>
       </main>
-      <footer>
-        <MusicMenu />
-        <UserMenu />
-      </footer>
     </>
   );
 }

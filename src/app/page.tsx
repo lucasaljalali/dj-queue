@@ -1,5 +1,10 @@
 "use client";
 
+//TODO: QRcode generator for guest page
+//TODO: guest page to vote for musics
+//TODO: make all styles cool and nice (for DJ's)
+//TODO: ranking and musics list requests paginations
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "./contexts/AuthContext";
@@ -20,7 +25,6 @@ export default function Home() {
       <main>
         <LoginForm />
       </main>
-      <footer></footer>
     </>
   );
 }
