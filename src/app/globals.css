@@ -207,7 +207,7 @@ a {
 .MuiTableSortLabel-root:is(.Mui-active),
 .MuiTableSortLabel-root:is(.Mui-active) svg:is(.MuiTableSortLabel-icon),
 .MuiToolbar-root { 
-  color: var(--text-color) !important;
+  color: var(--text-color);
 }
 
 @media (prefers-color-scheme: dark) {
