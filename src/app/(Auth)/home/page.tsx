@@ -24,7 +24,9 @@ export default function Home() {
 
   return (
     <>
-      <header>DJ QUEUE</header>
+      <header>
+        <h1 id="homeTitle">DJ QUEUE</h1>
+      </header>
       <main>
         <Tabs value={tabValue} onChange={handleChange} aria-label="basic tabs example">
           <Tab label="Ranking" />

@@ -22,8 +22,6 @@ import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
 import EditIcon from "@mui/icons-material/Edit";
 import EditMusicForm from "../EditMusicForm";
-import AddMusicButton from "../AddMusicButton";
-import QRcodeButton from "../QRcodeButton";
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
@@ -200,11 +198,6 @@ export default function UserMusics() {
       </Paper>
 
       {editFormData.current && <EditMusicForm open={editFormOpen} setState={setEditFormOpen} data={editFormData.current} />}
-
-      <div className="musicListButtonsContainer">
-        <QRcodeButton />
-        <AddMusicButton />
-      </div>
     </Box>
   );
 }

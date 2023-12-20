@@ -6,6 +6,7 @@ import { Box, Button, Dialog, IconButton, Typography, useMediaQuery, useTheme } 
 import { createUserHash } from "@/app/utils/createUserHash";
 import QRCode from "react-qr-code";
 import CloseIcon from "@mui/icons-material/Close";
+import QrCodeIcon from "@mui/icons-material/QrCode";
 
 export default function QRcodeButton() {
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
@@ -20,11 +21,11 @@ export default function QRcodeButton() {
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  console.log({ voteURL });
+
   return (
     <div id="addMusicButton">
-      <Button id="qrCodeButton" onClick={() => setQrCodeOpen(true)}>
-        Generate QRcode
+      <Button id="qrCodeButton" variant="outlined" startIcon={<QrCodeIcon />} onClick={() => setQrCodeOpen(true)}>
+        QRcode
       </Button>
 
       <Dialog onClose={() => setQrCodeOpen(false)} open={qrCodeOpen} fullScreen={fullScreen}>

@@ -7,6 +7,8 @@ import { deleteDoc, doc } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ResultMessage from "../ResultMessage";
+import QRcodeButton from "../QRcodeButton";
+import AddMusicButton from "../AddMusicButton";
 
 interface TableToolbarProps {
   numSelected: number;
@@ -58,9 +60,16 @@ export default function TableToolbar({ numSelected, selected, setSelected }: Tab
           </Tooltip>
         </>
       ) : (
-        <Typography sx={{ flex: "1 1 100%" }} variant="h6" id="tableTitle" component="div">
-          My Musics
-        </Typography>
+        <>
+          <Typography sx={{ flex: "1 1 100%" }} variant="h6" id="tableTitle" component="div">
+            My Musics
+          </Typography>
+
+          <div className="musicListButtonsContainer">
+            <QRcodeButton />
+            <AddMusicButton />
+          </div>
+        </>
       )}
 
       <ResultMessage state={snackbarState} setState={setSnackbarState} />

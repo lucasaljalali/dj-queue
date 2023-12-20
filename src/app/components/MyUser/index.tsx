@@ -65,59 +65,63 @@ export default function MyUser() {
   }
 
   return (
-    <div className="profileMainContainer">
-      <div className="profileImageContainter">
-        <Avatar
-          alt={currentUser?.displayName || currentUser?.email || undefined}
-          src={currentUser?.photoURL || undefined}
-          sx={{ width: 100, height: 100 }}
-        />
-        <Typography variant="h6">{currentUser?.email}</Typography>
-      </div>
-      <IconButton onClick={logout} id="logoutButton">
-        <LogoutIcon />
-      </IconButton>
-      <Box component="form" onSubmit={formik.handleSubmit} className="loginForm">
-        <TextField
-          id="displayName"
-          name="displayName"
-          type="text"
-          label={"Name"}
-          variant="outlined"
-          fullWidth
-          disabled={loading}
-          value={formik.values.displayName}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          error={formik.touched.displayName && Boolean(formik.errors.displayName)}
-          helperText={formik.touched.displayName && formik.errors.displayName}
-        />
+    <Box>
+      <Paper>
+        <div className="profileMainContainer">
+          <div className="profileImageContainter">
+            <Avatar
+              alt={currentUser?.displayName || currentUser?.email || undefined}
+              src={currentUser?.photoURL || undefined}
+              sx={{ width: 100, height: 100 }}
+            />
+            <Typography variant="h6">{currentUser?.email}</Typography>
+          </div>
+          <IconButton onClick={logout} id="logoutButton">
+            <LogoutIcon />
+          </IconButton>
+          <Box component="form" onSubmit={formik.handleSubmit} className="loginForm">
+            <TextField
+              id="displayName"
+              name="displayName"
+              type="text"
+              label={"Name"}
+              variant="outlined"
+              fullWidth
+              disabled={loading}
+              value={formik.values.displayName}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={formik.touched.displayName && Boolean(formik.errors.displayName)}
+              helperText={formik.touched.displayName && formik.errors.displayName}
+            />
 
-        <TextField
-          id="photoURL"
-          name="photoURL"
-          type="url"
-          label={"Image URL"}
-          variant="outlined"
-          fullWidth
-          disabled={loading}
-          value={formik.values.photoURL}
-          onChange={formik.handleChange}
-          onBlur={formik.handleBlur}
-          error={formik.touched.photoURL && Boolean(formik.errors.photoURL)}
-          helperText={formik.touched.photoURL && formik.errors.photoURL}
-        />
+            <TextField
+              id="photoURL"
+              name="photoURL"
+              type="url"
+              label={"Image URL"}
+              variant="outlined"
+              fullWidth
+              disabled={loading}
+              value={formik.values.photoURL}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              error={formik.touched.photoURL && Boolean(formik.errors.photoURL)}
+              helperText={formik.touched.photoURL && formik.errors.photoURL}
+            />
 
-        <Button disabled={loading} onClick={handleResetPassword} fullWidth>
-          {"RESET PASSWORD"}
-        </Button>
+            <Button disabled={loading} onClick={handleResetPassword} fullWidth>
+              {"RESET PASSWORD"}
+            </Button>
 
-        <Button disabled={loading} variant="contained" type="submit" fullWidth>
-          {"SAVE"}
-        </Button>
-      </Box>
+            <Button disabled={loading} variant="contained" type="submit" fullWidth>
+              {"SAVE"}
+            </Button>
+          </Box>
 
-      <ResultMessage state={snackbarState} setState={setSnackbarState} />
-    </div>
+          <ResultMessage state={snackbarState} setState={setSnackbarState} />
+        </div>
+      </Paper>
+    </Box>
   );
 }

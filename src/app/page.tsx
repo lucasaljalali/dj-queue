@@ -1,7 +1,5 @@
 "use client";
 
-//TODO: guest page to vote for musics
-//TODO: make all styles cool and nice (for DJ's)
 //TODO: ranking and musics list requests paginations
 
 import { useEffect } from "react";
@@ -19,11 +17,8 @@ export default function Home() {
   }, [currentUser]);
 
   return (
-    <>
-      <header>DJ QUEUE</header>
-      <main>
-        <LoginForm />
-      </main>
-    </>
+    <main>
+      <LoginForm />
+    </main>
   );
 }

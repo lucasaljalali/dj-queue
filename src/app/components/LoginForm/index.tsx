@@ -61,6 +61,7 @@ export default function LoginForm() {
 
   return (
     <div className="loginContainer">
+      <h1 id="loginTitle">DJ QUEUE</h1>
       <Button
         fullWidth
         variant="contained"
