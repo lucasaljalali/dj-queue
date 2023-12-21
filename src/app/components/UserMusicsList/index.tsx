@@ -28,28 +28,11 @@ import {
 import { db } from "@/app/services/firebase";
 import { useAuth } from "@/app/contexts/AuthContext";
 import { IMusic, Order } from "@/app/global";
-import { stableSort } from "./getStableSort";
+import { getStableSort } from "@/app/utils/getStableSort";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
 import EditIcon from "@mui/icons-material/Edit";
 import EditMusicForm from "../EditMusicForm";
-
-function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
-}
-
-function getComparator<Key extends keyof any>(
-  order: Order,
-  orderBy: Key
-): (a: { [key in Key]: number | string }, b: { [key in Key]: number | string }) => number {
-  return order === "desc" ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
-}
 
 export default function UserMusics() {
   const [data, setData] = useState<QueryDocumentSnapshot<DocumentData, DocumentData>[]>([]);
@@ -113,24 +96,27 @@ export default function UserMusics() {
 
   const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - dataTotal) : 0;
 
-  const visibleRows = useMemo(
-    () => stableSort(data, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage, data]
-  );
+  const visibleRows = useMemo(() => getStableSort(data, order, orderBy, page, rowsPerPage), [data, order, orderBy, page, rowsPerPage]);
 
   const handleFetch = async (loadOneMorePage?: boolean) => {
     loading = true;
+
     if (currentUser) {
       const musicsCollectionRef = collection(db, "musics");
       const pagination = loadOneMorePage ? [startAfter(data[data.length - 1]?.data()?.[orderBy])] : [];
       const queryOptions = [where("user", "==", currentUser?.uid), orderQueryBy(orderBy, order), ...pagination];
       const musicsQuery = query(musicsCollectionRef, ...queryOptions, limit(rowsPerPage));
-      const musicsCount = query(musicsCollectionRef, ...queryOptions);
-      const totalCount = await getCountFromServer(musicsCount);
+
       const musicsSnapshot = await getDocs(musicsQuery);
       const incomingIds = musicsSnapshot.docs.flatMap((doc) => doc.id);
       setData((prev) => [...prev.filter((prevMusic) => !incomingIds.includes(prevMusic.id)), ...musicsSnapshot.docs]);
-      !loadOneMorePage && setDataTotal(totalCount.data().count);
+
+      if (!loadOneMorePage) {
+        const musicsCount = query(musicsCollectionRef, ...queryOptions);
+        const totalCount = await getCountFromServer(musicsCount);
+        setDataTotal(totalCount.data().count);
+      }
+
       isFetching = false;
     }
   };
@@ -210,7 +196,7 @@ export default function UserMusics() {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[1, 5, 10, 25]}
+          rowsPerPageOptions={[5, 10, 25]}
           component="div"
           count={dataTotal}
           rowsPerPage={rowsPerPage}

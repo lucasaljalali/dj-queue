@@ -13,8 +13,24 @@ import {
   TableRow,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { stableSort } from "./getStableSort";
-import { collection, doc, getDoc, increment, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+import { getStableSort } from "@/app/utils/getStableSort";
+import {
+  DocumentData,
+  QueryDocumentSnapshot,
+  collection,
+  doc,
+  getDoc,
+  increment,
+  onSnapshot,
+  query,
+  startAfter,
+  updateDoc,
+  where,
+  orderBy as orderQueryBy,
+  limit,
+  getDocs,
+  getCountFromServer,
+} from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import { useCookies } from "react-cookie";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
@@ -26,26 +42,10 @@ interface VotingListProps {
   djId: string;
 }
 
-function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
-}
-
-function getComparator<Key extends keyof any>(
-  order: Order,
-  orderBy: Key
-): (a: { [key in Key]: number | string }, b: { [key in Key]: number | string }) => number {
-  return order === "desc" ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
 export default function VotingList({ djId }: VotingListProps) {
   const [cookies, setCookie] = useCookies([`${djId}_votes`]);
-  const [data, setData] = useState<IMusic[]>([] as IMusic[]);
+  const [data, setData] = useState<QueryDocumentSnapshot<DocumentData, DocumentData>[]>([]);
+  const [dataTotal, setDataTotal] = useState<number>(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -54,12 +54,13 @@ export default function VotingList({ djId }: VotingListProps) {
   const [snackbarState, setSnackbarState] = useState({ open: false, message: "", severity: "info" as AlertColor });
 
   let loading = false;
+  let isFetching = true;
 
   let currentVotes = cookies[`${djId}_votes`] || [];
 
   const isSelected = (id: string) => selected.indexOf(id) !== -1;
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data.length) : 0;
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - dataTotal) : 0;
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
@@ -76,10 +77,7 @@ export default function VotingList({ djId }: VotingListProps) {
     setOrderBy(property);
   };
 
-  const visibleRows = useMemo(
-    () => stableSort(data, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage, data]
-  );
+  const visibleRows = useMemo(() => getStableSort(data, order, orderBy, page, rowsPerPage), [order, orderBy, page, rowsPerPage, data]);
 
   const handleClick = (event: React.MouseEvent<unknown>, id: string) => {
     event.preventDefault();
@@ -122,6 +120,7 @@ export default function VotingList({ djId }: VotingListProps) {
       const musicSnapshot = await getDoc(musicRef);
       const currentVotesCount = musicSnapshot?.data()?.votes;
       await updateDoc(musicRef, { votes: increment(voted ? (currentVotesCount <= 0 ? 0 : -1) : 1) });
+      handleFetch();
       setSnackbarState({ open: true, message: "Success!", severity: "success" });
       updateCookie(data.id, voted);
     } catch (error: any) {
@@ -133,6 +132,7 @@ export default function VotingList({ djId }: VotingListProps) {
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
+    handleFetch(true);
     setPage(newPage);
   };
 
@@ -141,26 +141,45 @@ export default function VotingList({ djId }: VotingListProps) {
     setPage(0);
   };
 
-  useEffect(() => {
+  const handleFetch = async (loadOneMorePage?: boolean) => {
+    loading = true;
+
     if (djId) {
-      const q = query(collection(db, "musics"), where("user", "==", djId));
+      const musicsCollectionRef = collection(db, "musics");
+      const pagination = loadOneMorePage ? [startAfter(data[data.length - 1]?.data()?.[orderBy])] : [];
+      const queryOptions = [where("user", "==", djId), orderQueryBy(orderBy, order), ...pagination];
+      const musicsQuery = query(musicsCollectionRef, ...queryOptions, limit(rowsPerPage));
 
-      onSnapshot(q, (querySnapshot) => {
-        let musicsArray: IMusic[] = [];
+      const musicsSnapshot = await getDocs(musicsQuery);
+      const incomingIds = musicsSnapshot.docs.flatMap((doc) => doc.id);
+      setData((prev) => [...prev.filter((prevMusic) => !incomingIds.includes(prevMusic.id)), ...musicsSnapshot.docs]);
 
-        querySnapshot.forEach((doc) => {
-          musicsArray.push({ ...doc.data(), id: doc.id } as IMusic);
-        });
+      if (!loadOneMorePage) {
+        const musicsCount = query(musicsCollectionRef, ...queryOptions);
+        const totalCount = await getCountFromServer(musicsCount);
+        setDataTotal(totalCount.data().count);
+      }
 
-        setData(musicsArray);
-      });
+      isFetching = false;
     }
-  }, [djId]);
+  };
+
+  useEffect(() => {
+    if (djId && orderBy && order && rowsPerPage && !loading) {
+      handleFetch().finally(() => (loading = false));
+    }
+  }, [djId, orderBy, order, rowsPerPage]);
 
   return (
     <Box sx={{ width: "100%" }} id="votingListContainer">
       <Paper sx={{ width: "100%", mb: 2 }}>
-        <TableToolbar numSelected={selected.length} selected={selected} setSelected={setSelected} djId={djId} />
+        <TableToolbar
+          numSelected={selected.length}
+          selected={selected}
+          setSelected={setSelected}
+          djId={djId}
+          handleFetch={handleFetch}
+        />
         <TableContainer>
           <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
             <CustomTableHead
@@ -169,12 +188,12 @@ export default function VotingList({ djId }: VotingListProps) {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={data.length}
+              rowCount={dataTotal}
             />
             <TableBody>
               {visibleRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6}>{"EMPTY"}</TableCell>
+                  <TableCell colSpan={6}>{isFetching ? "LOADING..." : "EMPTY LIST"}</TableCell>
                 </TableRow>
               ) : (
                 visibleRows.map((row, index) => {
@@ -232,7 +251,7 @@ export default function VotingList({ djId }: VotingListProps) {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={data.length}
+          count={dataTotal}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

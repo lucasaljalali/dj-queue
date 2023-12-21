@@ -3,39 +3,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { IMusic, Order } from "@/app/global";
 import { Box, Checkbox, Paper, Table, TableBody, TableCell, TableContainer, TablePagination, TableRow } from "@mui/material";
-import { stableSort } from "./getStableSort";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { getStableSort } from "@/app/utils/getStableSort";
+import {
+  collection,
+  query,
+  startAfter,
+  where,
+  orderBy as orderQueryBy,
+  limit,
+  getDocs,
+  getCountFromServer,
+  QueryDocumentSnapshot,
+  DocumentData,
+} from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import { useAuth } from "@/app/contexts/AuthContext";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
 
-function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
-  if (b[orderBy] < a[orderBy]) {
-    return -1;
-  }
-  if (b[orderBy] > a[orderBy]) {
-    return 1;
-  }
-  return 0;
-}
-
-function getComparator<Key extends keyof any>(
-  order: Order,
-  orderBy: Key
-): (a: { [key in Key]: number | string }, b: { [key in Key]: number | string }) => number {
-  return order === "desc" ? (a, b) => descendingComparator(a, b, orderBy) : (a, b) => -descendingComparator(a, b, orderBy);
-}
-
 export default function Ranking() {
-  const [data, setData] = useState<IMusic[]>([] as IMusic[]);
+  const [data, setData] = useState<QueryDocumentSnapshot<DocumentData, DocumentData>[]>([]);
+  const [dataTotal, setDataTotal] = useState<number>(0);
   const [order, setOrder] = useState<Order>("desc");
   const [orderBy, setOrderBy] = useState<keyof IMusic>("votes");
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-
   const { currentUser } = useAuth();
+
+  let loading = false;
+  let isFetching = true;
 
   const handleRequestSort = (event: React.MouseEvent<unknown>, property: keyof IMusic) => {
     const isAsc = orderBy === property && order === "asc";
@@ -65,6 +62,7 @@ export default function Ranking() {
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
+    handleFetch(true);
     setPage(newPage);
   };
 
@@ -77,26 +75,43 @@ export default function Ranking() {
 
   const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data.length) : 0;
 
-  const visibleRows = useMemo(
-    () => stableSort(data, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [order, orderBy, page, rowsPerPage, data]
-  );
+  const visibleRows = useMemo(() => getStableSort(data, order, orderBy, page, rowsPerPage), [order, orderBy, page, rowsPerPage, data]);
+
+  const handleFetch = async (loadOneMorePage?: boolean) => {
+    loading = true;
+
+    if (currentUser) {
+      const musicsCollectionRef = collection(db, "musics");
+      const pagination = loadOneMorePage ? [startAfter(data[data.length - 1]?.data()?.[orderBy])] : [];
+      const secondOrdination = orderBy !== "votes" ? [orderQueryBy(orderBy, order)] : [];
+      const queryOptions = [
+        where("user", "==", currentUser?.uid),
+        where("votes", ">", 0),
+        orderQueryBy("votes", "desc"),
+        ...secondOrdination,
+        ...pagination,
+      ];
+      const musicsQuery = query(musicsCollectionRef, ...queryOptions, limit(rowsPerPage));
+
+      const musicsSnapshot = await getDocs(musicsQuery);
+      const incomingIds = musicsSnapshot.docs.flatMap((doc) => doc.id);
+      setData((prev) => [...prev.filter((prevMusic) => !incomingIds.includes(prevMusic.id)), ...musicsSnapshot.docs]);
+
+      if (!loadOneMorePage) {
+        const musicsCount = query(musicsCollectionRef, ...queryOptions);
+        const totalCount = await getCountFromServer(musicsCount);
+        setDataTotal(totalCount.data().count);
+      }
+
+      isFetching = false;
+    }
+  };
 
   useEffect(() => {
-    if (currentUser) {
-      const q = query(collection(db, "musics"), where("user", "==", currentUser?.uid), where("votes", ">", 0));
-
-      onSnapshot(q, (querySnapshot) => {
-        let musicsArray: IMusic[] = [];
-
-        querySnapshot.forEach((doc) => {
-          musicsArray.push({ ...doc.data(), id: doc.id } as IMusic);
-        });
-
-        setData(musicsArray);
-      });
+    if (currentUser && orderBy && order && rowsPerPage && !loading) {
+      handleFetch().finally(() => (loading = false));
     }
-  }, [currentUser]);
+  }, [currentUser, orderBy, order, rowsPerPage]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -110,22 +125,22 @@ export default function Ranking() {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={data.length}
+              rowCount={dataTotal}
             />
             <TableBody>
               {visibleRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6}>{"EMPTY"}</TableCell>
+                  <TableCell colSpan={6}>{isFetching ? "LOADING..." : "EMPTY LIST"}</TableCell>
                 </TableRow>
               ) : (
                 visibleRows.map((row, index) => {
-                  const isItemSelected = isSelected(row.id);
+                  const isItemSelected = isSelected(String(row.id));
                   const labelId = `enhanced-table-checkbox-${index}`;
 
                   return (
                     <TableRow
                       hover
-                      onClick={(event) => handleClick(event, row.id)}
+                      onClick={(event) => handleClick(event, String(row.id))}
                       role="checkbox"
                       aria-checked={isItemSelected}
                       tabIndex={-1}
@@ -161,11 +176,11 @@ export default function Ranking() {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[1, 5, 10, 25]}
           component="div"
-          count={data.length}
+          count={dataTotal}
           rowsPerPage={rowsPerPage}
-          page={page}
+          page={rowsPerPage >= dataTotal ? 0 : page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />

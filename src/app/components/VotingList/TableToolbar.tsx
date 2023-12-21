@@ -14,9 +14,10 @@ interface TableToolbarProps {
   selected: readonly string[];
   setSelected: Dispatch<SetStateAction<readonly string[]>>;
   djId: string;
+  handleFetch: (loadOneMorePage?: boolean) => Promise<void>;
 }
 
-export default function TableToolbar({ numSelected, selected, setSelected, djId }: TableToolbarProps) {
+export default function TableToolbar({ numSelected, selected, setSelected, djId, handleFetch }: TableToolbarProps) {
   const [cookies, setCookie] = useCookies([`${djId}_votes`]);
   const [snackbarState, setSnackbarState] = useState({ open: false, message: "", severity: "info" as AlertColor });
 
@@ -41,26 +42,32 @@ export default function TableToolbar({ numSelected, selected, setSelected, djId 
     }
   };
 
-  function handleVotesClick() {
-    loading = true;
-    selected.forEach(async (id) => {
-      try {
-        const voted = currentVotes.includes(id);
-        const musicRef = doc(db, "musics", id);
-        const musicSnapshot = await getDoc(musicRef);
-        const currentVotesCount = musicSnapshot?.data()?.votes;
-        await updateDoc(musicRef, { votes: increment(voted ? (currentVotesCount <= 0 ? 0 : -1) : 1) });
-        setSnackbarState({ open: true, message: "Success!", severity: "success" });
-        updateCookie(id, voted);
-        setSelected([]);
-      } catch (error: any) {
-        setSnackbarState({ open: true, message: error.code, severity: "error" });
-        console.error(error);
-      } finally {
-        loading = false;
-      }
-    });
-    loading = false;
+  async function handleVotesClick() {
+    try {
+      loading = true;
+
+      await Promise.all(
+        selected.map(async (id) => {
+          const voted = currentVotes.includes(id);
+          const musicRef = doc(db, "musics", id);
+          const musicSnapshot = await getDoc(musicRef);
+          const currentVotesCount = musicSnapshot?.data()?.votes;
+
+          await updateDoc(musicRef, { votes: increment(voted ? (currentVotesCount <= 0 ? 0 : -1) : 1) });
+          updateCookie(id, voted);
+        })
+      );
+
+      setSnackbarState({ open: true, message: "Success!", severity: "success" });
+      setSelected([]);
+      await handleFetch(); // Assuming handleFetch is an async function
+
+      loading = false;
+    } catch (error: any) {
+      loading = false;
+      setSnackbarState({ open: true, message: error.code, severity: "error" });
+      console.error(error);
+    }
   }
 
   return (
