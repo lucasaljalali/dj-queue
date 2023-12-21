@@ -32,16 +32,10 @@ export default function CustomTableHead(props: TableProps) {
       label: "Title",
     },
     {
-      id: "genre",
-      numeric: false,
-      disablePadding: false,
-      label: "Genre",
-    },
-    {
-      id: "duration",
+      id: "vote",
       numeric: true,
       disablePadding: false,
-      label: "Duration (min)",
+      label: "Vote",
     },
     {
       id: "votes",
@@ -50,11 +44,17 @@ export default function CustomTableHead(props: TableProps) {
       label: "Total Votes",
     },
     {
-      id: "vote",
-      numeric: true,
+      id: "genre",
+      numeric: false,
       disablePadding: false,
-      label: "Vote",
+      label: "Genre",
     },
+    // {
+    //   id: "duration",
+    //   numeric: true,
+    //   disablePadding: false,
+    //   label: "Duration (min)",
+    // },
   ];
 
   return (

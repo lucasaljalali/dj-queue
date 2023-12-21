@@ -223,9 +223,6 @@ export default function VotingList({ djId }: VotingListProps) {
                       <TableCell component="th" id={labelId} scope="row" padding="none">
                         {row.title}
                       </TableCell>
-                      <TableCell align="right">{row.genre}</TableCell>
-                      <TableCell align="right">{row.duration}</TableCell>
-                      <TableCell align="right">{row.votes}</TableCell>
                       <TableCell align="right">
                         {
                           <IconButton
@@ -236,6 +233,9 @@ export default function VotingList({ djId }: VotingListProps) {
                           </IconButton>
                         }
                       </TableCell>
+                      <TableCell align="right">{row.votes}</TableCell>
+                      <TableCell align="right">{row.genre}</TableCell>
+                      {/* <TableCell align="right">{row.duration}</TableCell> */}
                     </TableRow>
                   );
                 })
