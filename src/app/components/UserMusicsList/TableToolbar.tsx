@@ -47,6 +47,7 @@ export default function TableToolbar({ numSelected, selected, setSelected }: Tab
           bgcolor: (theme) => alpha(theme.palette.primary.main, theme.palette.action.activatedOpacity),
         }),
       }}
+      className="responsiveToolbar"
     >
       {numSelected > 0 ? (
         <>

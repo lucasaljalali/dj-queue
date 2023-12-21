@@ -12,13 +12,15 @@ import {
   TablePagination,
   TableRow,
 } from "@mui/material";
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { stableSort } from "./getStableSort";
-import { collection, doc, increment, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, increment, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
+import { useCookies } from "react-cookie";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
+import ResultMessage from "../ResultMessage";
 
 interface VotingListProps {
   djId: string;
@@ -42,6 +44,7 @@ function getComparator<Key extends keyof any>(
 }
 
 export default function VotingList({ djId }: VotingListProps) {
+  const [cookies, setCookie] = useCookies([`${djId}_votes`]);
   const [data, setData] = useState<IMusic[]>([] as IMusic[]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -52,7 +55,7 @@ export default function VotingList({ djId }: VotingListProps) {
 
   let loading = false;
 
-  let currentVotes = JSON.parse(sessionStorage.getItem("votes") || "[]") as string[];
+  let currentVotes = cookies[`${djId}_votes`] || [];
 
   const isSelected = (id: string) => selected.indexOf(id) !== -1;
 
@@ -79,6 +82,8 @@ export default function VotingList({ djId }: VotingListProps) {
   );
 
   const handleClick = (event: React.MouseEvent<unknown>, id: string) => {
+    event.preventDefault();
+
     const selectedIndex = selected.indexOf(id);
     let newSelected: readonly string[] = [];
 
@@ -90,30 +95,35 @@ export default function VotingList({ djId }: VotingListProps) {
     setSelected(newSelected);
   };
 
-  const updateSessionStorage = (musicId: string, voted: boolean) => {
+  const updateCookie = (musicId: string, voted: boolean) => {
+    const nextDay = new Date(new Date().setDate(new Date().getDate() + 1));
+
     if (voted) {
       const index = currentVotes.indexOf(musicId);
       if (index !== -1) {
         currentVotes.splice(index, 1);
-        sessionStorage.setItem("votes", JSON.stringify(currentVotes));
+        setCookie(`${djId}_votes`, currentVotes, { expires: nextDay });
       }
     } else {
       if (!currentVotes.includes(musicId)) {
         currentVotes.push(musicId);
-        sessionStorage.setItem("votes", JSON.stringify(currentVotes));
+        setCookie(`${djId}_votes`, currentVotes, { expires: nextDay });
       }
     }
   };
 
   const handleVoteClick = async (event: React.MouseEvent<unknown>, data: IMusic) => {
-    event.stopPropagation();
+    event?.stopPropagation();
     loading = true;
+
     try {
       const voted = currentVotes.includes(data.id);
       const musicRef = doc(db, "musics", data.id);
-      await updateDoc(musicRef, { votes: increment(voted ? -1 : 1) });
+      const musicSnapshot = await getDoc(musicRef);
+      const currentVotesCount = musicSnapshot?.data()?.votes;
+      await updateDoc(musicRef, { votes: increment(voted ? (currentVotesCount <= 0 ? 0 : -1) : 1) });
       setSnackbarState({ open: true, message: "Success!", severity: "success" });
-      updateSessionStorage(data.id, voted);
+      updateCookie(data.id, voted);
     } catch (error: any) {
       setSnackbarState({ open: true, message: error.code, severity: "error" });
       console.error(error);
@@ -148,9 +158,9 @@ export default function VotingList({ djId }: VotingListProps) {
   }, [djId]);
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: "100%" }} id="votingListContainer">
       <Paper sx={{ width: "100%", mb: 2 }}>
-        <TableToolbar numSelected={selected.length} selected={selected} setSelected={setSelected} />
+        <TableToolbar numSelected={selected.length} selected={selected} setSelected={setSelected} djId={djId} />
         <TableContainer>
           <Table sx={{ minWidth: 750 }} aria-labelledby="tableTitle">
             <CustomTableHead
@@ -202,9 +212,8 @@ export default function VotingList({ djId }: VotingListProps) {
                           <IconButton
                             onClick={(event) => handleVoteClick(event, row)}
                             className={currentVotes.includes(row.id) ? "voteButton voted" : "voteButton"}
-                            style={{ color: currentVotes.includes(row.id) ? "blue" : undefined }}
                           >
-                            <ThumbUpIcon />
+                            <ThumbUpIcon style={{ color: currentVotes.includes(row.id) ? "blue" : undefined }} />
                           </IconButton>
                         }
                       </TableCell>
@@ -230,6 +239,8 @@ export default function VotingList({ djId }: VotingListProps) {
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
       </Paper>
+
+      <ResultMessage state={snackbarState} setState={setSnackbarState} />
     </Box>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { DJInfo, extractUserInfo } from "../utils/decryptUserHash";
 import { Avatar, Typography } from "@mui/material";
+import { CookiesProvider } from "react-cookie";
 import VotingList from "../components/VotingList";
 
 export default function UserListToVote({ params }: { params: { userHash: string } }) {
@@ -15,7 +16,7 @@ export default function UserListToVote({ params }: { params: { userHash: string 
   }, [params.userHash]);
 
   return (
-    <>
+    <CookiesProvider>
       <header>
         <div className="profileImageContainter">
           {djData && (
@@ -27,6 +28,6 @@ export default function UserListToVote({ params }: { params: { userHash: string 
         </div>
       </header>
       <main>{djData?.uid && <VotingList djId={djData.uid} />}</main>
-    </>
+    </CookiesProvider>
   );
 }

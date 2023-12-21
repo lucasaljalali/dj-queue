@@ -3,8 +3,9 @@
 import { Dispatch, SetStateAction, useState } from "react";
 import { AlertColor, IconButton, Toolbar, Tooltip, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { deleteDoc, doc, increment, updateDoc } from "firebase/firestore";
+import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
+import { useCookies } from "react-cookie";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import ResultMessage from "../ResultMessage";
 
@@ -12,26 +13,30 @@ interface TableToolbarProps {
   numSelected: number;
   selected: readonly string[];
   setSelected: Dispatch<SetStateAction<readonly string[]>>;
+  djId: string;
 }
 
-export default function TableToolbar({ numSelected, selected, setSelected }: TableToolbarProps) {
+export default function TableToolbar({ numSelected, selected, setSelected, djId }: TableToolbarProps) {
+  const [cookies, setCookie] = useCookies([`${djId}_votes`]);
   const [snackbarState, setSnackbarState] = useState({ open: false, message: "", severity: "info" as AlertColor });
 
   let loading = false;
 
-  let currentVotes = JSON.parse(sessionStorage.getItem("votes") || "[]") as string[];
+  let currentVotes = cookies[`${djId}_votes`] || [];
 
-  const updateSessionStorage = (musicId: string, voted: boolean) => {
+  const updateCookie = (musicId: string, voted: boolean) => {
+    const nextDay = new Date(new Date().setDate(new Date().getDate() + 1));
+
     if (voted) {
       const index = currentVotes.indexOf(musicId);
       if (index !== -1) {
         currentVotes.splice(index, 1);
-        sessionStorage.setItem("votes", JSON.stringify(currentVotes));
+        setCookie(`${djId}_votes`, currentVotes, { expires: nextDay });
       }
     } else {
       if (!currentVotes.includes(musicId)) {
         currentVotes.push(musicId);
-        sessionStorage.setItem("votes", JSON.stringify(currentVotes));
+        setCookie(`${djId}_votes`, currentVotes, { expires: nextDay });
       }
     }
   };
@@ -42,9 +47,11 @@ export default function TableToolbar({ numSelected, selected, setSelected }: Tab
       try {
         const voted = currentVotes.includes(id);
         const musicRef = doc(db, "musics", id);
-        await updateDoc(musicRef, { votes: increment(voted ? -1 : 1) });
+        const musicSnapshot = await getDoc(musicRef);
+        const currentVotesCount = musicSnapshot?.data()?.votes;
+        await updateDoc(musicRef, { votes: increment(voted ? (currentVotesCount <= 0 ? 0 : -1) : 1) });
         setSnackbarState({ open: true, message: "Success!", severity: "success" });
-        updateSessionStorage(id, voted);
+        updateCookie(id, voted);
         setSelected([]);
       } catch (error: any) {
         setSnackbarState({ open: true, message: error.code, severity: "error" });

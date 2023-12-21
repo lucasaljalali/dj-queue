@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { IMusic, Order } from "@/app/global";
 import {
   Box,
   Checkbox,
@@ -14,10 +13,22 @@ import {
   TablePagination,
   TableRow,
 } from "@mui/material";
-import { stableSort } from "./getStableSort";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  orderBy as orderQueryBy,
+  limit,
+  startAfter,
+  getCountFromServer,
+  getDocs,
+  QueryDocumentSnapshot,
+  DocumentData,
+} from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import { useAuth } from "@/app/contexts/AuthContext";
+import { IMusic, Order } from "@/app/global";
+import { stableSort } from "./getStableSort";
 import TableToolbar from "./TableToolbar";
 import CustomTableHead from "./CustomTableHead";
 import EditIcon from "@mui/icons-material/Edit";
@@ -41,7 +52,8 @@ function getComparator<Key extends keyof any>(
 }
 
 export default function UserMusics() {
-  const [data, setData] = useState<IMusic[]>([] as IMusic[]);
+  const [data, setData] = useState<QueryDocumentSnapshot<DocumentData, DocumentData>[]>([]);
+  const [dataTotal, setDataTotal] = useState<number>(0);
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [order, setOrder] = useState<Order>("asc");
   const [orderBy, setOrderBy] = useState<keyof IMusic>("title");
@@ -51,6 +63,9 @@ export default function UserMusics() {
   const { currentUser } = useAuth();
   const editFormData = useRef<IMusic | null>(null);
 
+  let loading = false;
+  let isFetching = true;
+
   const handleRequestSort = (event: React.MouseEvent<unknown>, property: keyof IMusic) => {
     const isAsc = orderBy === property && order === "asc";
     setOrder(isAsc ? "desc" : "asc");
@@ -59,7 +74,7 @@ export default function UserMusics() {
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelected = data.map((n) => n.id);
+      const newSelected = data.map((n) => n.data().id);
       setSelected(newSelected);
       return;
     }
@@ -85,6 +100,7 @@ export default function UserMusics() {
   };
 
   const handleChangePage = (event: unknown, newPage: number) => {
+    handleFetch(true);
     setPage(newPage);
   };
 
@@ -95,28 +111,39 @@ export default function UserMusics() {
 
   const isSelected = (id: string) => selected.indexOf(id) !== -1;
 
-  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - data.length) : 0;
+  const emptyRows = page > 0 ? Math.max(0, (1 + page) * rowsPerPage - dataTotal) : 0;
 
   const visibleRows = useMemo(
     () => stableSort(data, getComparator(order, orderBy)).slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
     [order, orderBy, page, rowsPerPage, data]
   );
 
-  useEffect(() => {
+  const handleFetch = async (loadOneMorePage?: boolean) => {
+    loading = true;
     if (currentUser) {
-      const q = query(collection(db, "musics"), where("user", "==", currentUser?.uid));
-
-      onSnapshot(q, (querySnapshot) => {
-        let musicsArray: IMusic[] = [];
-
-        querySnapshot.forEach((doc) => {
-          musicsArray.push({ ...doc.data(), id: doc.id } as IMusic);
-        });
-
-        setData(musicsArray);
-      });
+      const musicsCollectionRef = collection(db, "musics");
+      const pagination = loadOneMorePage ? [startAfter(data[data.length - 1]?.data()?.[orderBy])] : [];
+      const queryOptions = [where("user", "==", currentUser?.uid), orderQueryBy(orderBy, order), ...pagination];
+      const musicsQuery = query(musicsCollectionRef, ...queryOptions, limit(rowsPerPage));
+      const musicsCount = query(musicsCollectionRef, ...queryOptions);
+      const totalCount = await getCountFromServer(musicsCount);
+      const musicsSnapshot = await getDocs(musicsQuery);
+      const incomingIds = musicsSnapshot.docs.flatMap((doc) => doc.id);
+      setData((prev) => [...prev.filter((prevMusic) => !incomingIds.includes(prevMusic.id)), ...musicsSnapshot.docs]);
+      !loadOneMorePage && setDataTotal(totalCount.data().count);
+      isFetching = false;
     }
-  }, [currentUser]);
+  };
+
+  useEffect(() => {
+    console.log({ loading });
+  }, [loading]);
+
+  useEffect(() => {
+    if (currentUser && orderBy && order && rowsPerPage && !loading) {
+      handleFetch().finally(() => (loading = false));
+    }
+  }, [currentUser, orderBy, order, rowsPerPage]);
 
   return (
     <Box sx={{ width: "100%" }}>
@@ -130,22 +157,22 @@ export default function UserMusics() {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={data.length}
+              rowCount={dataTotal}
             />
             <TableBody>
               {visibleRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6}>{"EMPTY"}</TableCell>
+                  <TableCell colSpan={6}>{isFetching ? "LOADING..." : "EMPTY LIST"}</TableCell>
                 </TableRow>
               ) : (
                 visibleRows.map((row, index) => {
-                  const isItemSelected = isSelected(row.id);
+                  const isItemSelected = isSelected(String(row.id));
                   const labelId = `enhanced-table-checkbox-${index}`;
 
                   return (
                     <TableRow
                       hover
-                      onClick={(event) => handleClick(event, row.id)}
+                      onClick={(event) => handleClick(event, String(row.id))}
                       role="checkbox"
                       aria-checked={isItemSelected}
                       tabIndex={-1}
@@ -169,7 +196,7 @@ export default function UserMusics() {
                       <TableCell align="right">{row.duration}</TableCell>
                       <TableCell align="right">
                         {
-                          <IconButton onClick={(event) => handleEditClick(event, row)}>
+                          <IconButton onClick={(event) => handleEditClick(event, row as IMusic)}>
                             <EditIcon />
                           </IconButton>
                         }
@@ -187,11 +214,11 @@ export default function UserMusics() {
           </Table>
         </TableContainer>
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[1, 5, 10, 25]}
           component="div"
-          count={data.length}
+          count={dataTotal}
           rowsPerPage={rowsPerPage}
-          page={page}
+          page={rowsPerPage >= dataTotal ? 0 : page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
