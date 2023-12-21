@@ -15,6 +15,7 @@ import {
   getCountFromServer,
   QueryDocumentSnapshot,
   DocumentData,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "@/app/services/firebase";
 import { useAuth } from "@/app/contexts/AuthContext";
@@ -78,9 +79,8 @@ export default function Ranking() {
   const visibleRows = useMemo(() => getStableSort(data, order, orderBy, page, rowsPerPage), [order, orderBy, page, rowsPerPage, data]);
 
   const handleFetch = async (loadOneMorePage?: boolean) => {
-    loading = true;
-
-    if (currentUser) {
+    if (currentUser && !loading) {
+      loading = true;
       const musicsCollectionRef = collection(db, "musics");
       const pagination = loadOneMorePage ? [startAfter(data[data.length - 1]?.data()?.[orderBy])] : [];
       const secondOrdination = orderBy !== "votes" ? [orderQueryBy(orderBy, order)] : [];
@@ -93,17 +93,25 @@ export default function Ranking() {
       ];
       const musicsQuery = query(musicsCollectionRef, ...queryOptions, limit(rowsPerPage));
 
-      const musicsSnapshot = await getDocs(musicsQuery);
-      const incomingIds = musicsSnapshot.docs.flatMap((doc) => doc.id);
-      setData((prev) => [...prev.filter((prevMusic) => !incomingIds.includes(prevMusic.id)), ...musicsSnapshot.docs]);
+      onSnapshot(musicsQuery, async (querySnapshot) => {
+        let musicsArray: QueryDocumentSnapshot<DocumentData, DocumentData>[] = [];
+        let incomingIds: string[] = [];
 
-      if (!loadOneMorePage) {
-        const musicsCount = query(musicsCollectionRef, ...queryOptions);
-        const totalCount = await getCountFromServer(musicsCount);
-        setDataTotal(totalCount.data().count);
-      }
+        querySnapshot.forEach((doc) => {
+          musicsArray.push(doc);
+          incomingIds.push(doc.id);
+        });
 
-      isFetching = false;
+        setData((prev) => [...prev.filter((prevMusic) => !incomingIds.includes(prevMusic.id)), ...musicsArray]);
+
+        if (!loadOneMorePage) {
+          const musicsCount = query(musicsCollectionRef, ...queryOptions);
+          const totalCount = await getCountFromServer(musicsCount);
+          setDataTotal(totalCount.data().count);
+        }
+
+        isFetching = false;
+      });
     }
   };
 
