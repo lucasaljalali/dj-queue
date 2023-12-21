@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/app/contexts/AuthContext";
-import { Box, Button, Dialog, IconButton, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Button, Dialog, IconButton, Link, Typography, useMediaQuery, useTheme } from "@mui/material";
 import { createUserHash } from "@/app/utils/createUserHash";
 import QRCode from "react-qr-code";
 import CloseIcon from "@mui/icons-material/Close";
@@ -38,7 +38,14 @@ export default function QRcodeButton() {
         </div>
 
         <Box className="dialogForm">
-          {voteURL && <QRCode style={{ height: "auto", maxWidth: "100%", width: "100%" }} size={350} value={voteURL} />}
+          {voteURL && (
+            <>
+              <QRCode style={{ height: "auto", maxWidth: "100%", width: "100%" }} size={350} value={voteURL} />
+              <Link href={voteURL} target="_blank" sx={{ alignSelf: "center" }}>
+                Open link
+              </Link>
+            </>
+          )}
         </Box>
       </Dialog>
     </div>

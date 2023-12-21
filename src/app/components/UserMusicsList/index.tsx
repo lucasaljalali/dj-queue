@@ -136,10 +136,6 @@ export default function UserMusics() {
   };
 
   useEffect(() => {
-    console.log({ loading });
-  }, [loading]);
-
-  useEffect(() => {
     if (currentUser && orderBy && order && rowsPerPage && !loading) {
       handleFetch().finally(() => (loading = false));
     }
