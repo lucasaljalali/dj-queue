@@ -1,6 +1,6 @@
 "use client";
 
-//TODO: ranking and musics list requests paginations
+//TODO: improve select all to select just the ones in that page
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
