@@ -1,6 +1,8 @@
 # DJ QUEUE
 
-#### Video Demo: [Your Video URL Here]
+#### Video Demo: https://youtu.be/BC-5Gu88Tv4
+
+#### App URL: https://dj-queue.vercel.app/
 
 #### Description:
 
