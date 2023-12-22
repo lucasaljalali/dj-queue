@@ -133,7 +133,7 @@ export default function Ranking() {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={dataTotal}
+              rowCount={data.length}
             />
             <TableBody>
               {visibleRows.length === 0 ? (

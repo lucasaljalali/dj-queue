@@ -2,7 +2,7 @@
 
 #### Video Demo: https://youtu.be/BC-5Gu88Tv4
 
-#### App URL: https://dj-queue.vercel.app/
+#### App URL: https://youtu.be/BC-5Gu88Tv4
 
 #### Description:
 

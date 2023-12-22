@@ -188,7 +188,7 @@ export default function VotingList({ djId }: VotingListProps) {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={dataTotal}
+              rowCount={data.length}
             />
             <TableBody>
               {visibleRows.length === 0 ? (

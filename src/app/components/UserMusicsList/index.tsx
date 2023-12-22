@@ -58,7 +58,7 @@ export default function UserMusics() {
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelected = data.map((n) => n.data().id);
+      const newSelected = data.map((n) => n.id);
       setSelected(newSelected);
       return;
     }
@@ -147,7 +147,7 @@ export default function UserMusics() {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={dataTotal}
+              rowCount={data.length}
             />
             <TableBody>
               {visibleRows.length === 0 ? (
